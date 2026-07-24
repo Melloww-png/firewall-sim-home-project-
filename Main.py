@@ -10,7 +10,7 @@ blocked_ip = "192.168.1.10"
 
 # Check the packet
 if packet["ip"] == blocked_ip:
-    print("❌ NOT ALLOWED/Blocked")
+    print("❌ BLOCKED")
     print("Reason: IP address is blocked.")
 else:
     print("✅ ALLOWED")
