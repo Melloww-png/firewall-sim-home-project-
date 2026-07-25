@@ -1,6 +1,6 @@
 # Fake network packet
 packet = {
-    "ip": "192.168.1.10",
+    "ip": "192.168.1.20",
     "port": 23,
     "protocol": "TCP"
 }
