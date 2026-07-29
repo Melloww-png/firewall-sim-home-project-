@@ -10,18 +10,25 @@ blocked_ips = ["192.168.1.10", "10.0.0.5"]
 blocked_ports = [23, 21]
 blocked_protocols = ["UDP"]
 
-# Checking the packet
+# reasons for blocking
+blocked_reasons = []
+
 if packet["ip"] in blocked_ips:
-    print("❌ BLOCKED")
-    print("Reason: IP address is blocked.")
+    blocked_reasons.append("IP address")
 
-elif packet["port"] in blocked_ports:
-    print("❌ BLOCKED")
-    print("Reason: Port is blocked.")
+if packet["port"] in blocked_ports:
+    blocked_reasons.append("Port")
 
-elif packet["protocol"] in blocked_protocols:
-    print("❌ BLOCKED")
-    print("Reason: Protocol is blocked.")   
+if packet["protocol"] in blocked_protocols:
+    blocked_reasons.append("Protocol")
 
+# final decision
+if len(blocked_reasons) == 1:
+    reason = blocked_reasons[0]
+elif len(blocked_reasons) == 2:
+    reason = " and ".join(blocked_reasons)
 else:
-    print("✅ ALLOWED")
+    reason = ", ".join(blocked_reasons[:-1]) + " and " + blocked_reasons[-1]
+
+print("❌ BLOCKED")
+print(f"Reason: {reason} blocked.")
