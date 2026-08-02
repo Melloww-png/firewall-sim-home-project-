@@ -23,12 +23,16 @@ if packet["protocol"] in blocked_protocols:
     blocked_reasons.append("Protocol")
 
 # final decision
-if len(blocked_reasons) == 1:
-    reason = blocked_reasons[0]
-elif len(blocked_reasons) == 2:
-    reason = " and ".join(blocked_reasons)
-else:
-    reason = ", ".join(blocked_reasons[:-1]) + " and " + blocked_reasons[-1]
+if blocked_reasons:
+    if len(blocked_reasons) == 1:
+        reason = blocked_reasons[0]
+    elif len(blocked_reasons) == 2:
+        reason = " and ".join(blocked_reasons)
+    else:
+        reason = ", ".join(blocked_reasons[:-1]) + " and " + blocked_reasons[-1]
 
-print("❌ BLOCKED")
-print(f"Reason: {reason} blocked.")
+    print("❌ BLOCKED")
+    print(f"Reason: {reason} blocked.")
+else:
+    print("✅ ALLOWED")
+    print("Reason: No firewall rules matched.")
