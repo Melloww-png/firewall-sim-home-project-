@@ -1,0 +1,2 @@
+IP=8.8.8.8., Port=33, Protocol=TCP, Decision=ALLOWED
+IP=8.8.8.8., Port=21, Protocol=TCP, Decision=BLOCKED
