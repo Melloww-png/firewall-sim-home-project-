@@ -1,7 +1,44 @@
-# Firewall rules
-blocked_ips = ["192.168.1.10", "10.0.0.5"]
-blocked_ports = [23, 21]
-blocked_protocols = ["UDP"]
+import sqlite3
+
+conn = sqlite3.connect("firewall.db") 
+cursor = conn.cursor()
+
+cursor.execute("""
+CREATE TABLE IF NOT EXISTS blocked_ips (
+    ip_address TEXT PRIMARY KEY
+)
+""")
+
+cursor.execute("""
+CREATE TABLE IF NOT EXISTS blocked_ports (
+    port INTEGER PRIMARY KEY
+)
+""")
+
+cursor.execute("""
+CREATE TABLE IF NOT EXISTS blocked_protocols (
+    protocol TEXT PRIMARY KEY
+)
+""")
+
+conn.commit()
+
+cursor.execute("INSERT OR IGNORE INTO blocked_ips VALUES (?)", ("192.168.1.10",))
+cursor.execute("INSERT OR IGNORE INTO blocked_ips VALUES (?)", ("10.0.0.5",))
+
+cursor.execute("INSERT OR IGNORE INTO blocked_ports VALUES (?)", (23,))
+cursor.execute("INSERT OR IGNORE INTO blocked_ports VALUES (?)", (21,))
+
+cursor.execute("INSERT OR IGNORE INTO blocked_protocols VALUES (?)", ("UDP",))
+
+conn.commit()
+
+print("Blocked IPs in database:")
+
+cursor.execute("SELECT * FROM blocked_ips")
+
+for row in cursor.fetchall():
+    print(row)
 
 while True:
 
@@ -26,13 +63,28 @@ while True:
         # reasons for blocking
         blocked_reasons = []
 
-        if packet["ip"] in blocked_ips:
-            blocked_reasons.append("IP address")
+        cursor.execute(
+            "SELECT * FROM blocked_ips WHERE ip_address = ?", 
+            (packet["ip"],)
+        )
+        
+        if cursor.fetchone():
+            blocked_reasons.append("IP Address")
 
-        if packet["port"] in blocked_ports:
+        cursor.execute(
+            "SELECT * FROM blocked_ports WHERE port = ?",
+            (packet["port"],)
+        )
+
+        if cursor.fetchone():
             blocked_reasons.append("Port")
 
-        if packet["protocol"] in blocked_protocols:
+        cursor.execute(
+            "SELECT * FROM blocked_protocols WHERE protocol = ?",
+            (packet["protocol"],)
+        )
+
+        if cursor.fetchone():
             blocked_reasons.append("Protocol")
 
         # final decision
@@ -51,23 +103,45 @@ while True:
             print("Reason: No firewall rules matched.")
 
     elif choice == "2":
-        print("\nBlocked IPs:", blocked_ips)
-        print("Blocked Ports:", blocked_ports)
-        print("Blocked Protocols:", blocked_protocols)
+        print("\nBlocked IPs:")
+        cursor.execute("SELECT * FROM blocked_ips")
+        for row in cursor.fetchall():
+            print(row[0])
+
+        print("Blocked Ports:")
+        cursor.execute("SELECT * FROM blocked_ports")
+        for row in cursor.fetchall():
+            print(row[0])
+
+        print("Blocked Protocols:")
+        cursor.execute("SELECT * FROM blocked_protocols")
+        for row in cursor.fetchall():
+            print(row[0])
 
     elif choice == "3":
         ip = input("Enter IP to block: ")
-        blocked_ips.append(ip)
+        cursor.execute(
+            "INSERT OR IGNORE INTO blocked_ips VALUES (?)", 
+            (ip,)
+        )
+        conn.commit()
+
         print(f"{ip} has been added to the blocked list.")
 
     elif choice == "4":
         ip = input("Enter IP to remove: ")
 
-        if ip in blocked_ips:
-            blocked_ips.remove(ip)
+        cursor.execute(
+            "DELETE FROM blocked_ips WHERE ip_address = ?",
+            (ip,)
+        )
+        conn.commit()
+
+        if cursor.rowcount > 0:
             print(f"{ip} has been removed.")
         else:
             print("IP not found.")
+
 
     elif choice == "5":
         print("Exiting firewall simulator...")
