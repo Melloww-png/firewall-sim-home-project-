@@ -1,4 +1,5 @@
 import sqlite3
+import ipaddress
 
 conn = sqlite3.connect("firewall.db") 
 cursor = conn.cursor()
@@ -15,6 +16,63 @@ CREATE TABLE IF NOT EXISTS firewall_rules (
 """)
 
 conn.commit()
+
+def get_valid_port():
+    while True:
+        try:
+            port = int(input("Enter Port: "))
+
+            if 1 <= port <= 65535:
+                return port
+
+            print("Invalid port. Enter a number between 1 and 65535.")
+
+        except ValueError:
+            print("Invalid port. Please enter a number.")
+
+
+def get_valid_priority():
+    while True:
+        try:
+            priority = int(input("Enter Priority (1 = highest): "))
+
+            if priority >= 1:
+                return priority
+
+            print("Priority must be 1 or higher.")
+
+        except ValueError:
+            print("Invalid priority. Please enter a number.")
+
+
+def get_valid_action():
+    while True:
+        action = input("Enter Action (ALLOW/BLOCK): ").strip().upper()
+
+        if action in ["ALLOW", "BLOCK"]:
+            return action
+
+        print("Invalid action. Please enter ALLOW or BLOCK.")
+
+def get_valid_ip():
+    while True:
+        ip = input("Enter IP Address: ").strip()
+
+        try:
+            ipaddress.ip_address(ip)
+            return ip
+        except ValueError:
+            print("Invalid IP address. Please enter a valid IPv4 address.")
+
+
+def get_valid_protocol():
+    while True:
+        protocol = input("Enter Protocol: ").strip().upper()
+
+        if protocol in ["TCP", "UDP", "ICMP"]:
+            return protocol
+
+        print("Invalid protocol. Use TCP, UDP, or ICMP.")
 
 cursor.execute("""
 CREATE TABLE IF NOT EXISTS packet_logs (
@@ -41,12 +99,12 @@ WHERE NOT EXISTS (
     1,
     "192.168.1.10",
     80,
-    "ATP",
+    "TCP",
     "BLOCK",
 
     "192.168.1.10",
     80,
-    "ATP",
+    "TCP",
     "BLOCK"
 ))
 
@@ -97,7 +155,8 @@ while True:
     print("3. Add Firewall Rule")
     print("4. Delete Firewall Rule")
     print("5. View Packet Logs")
-    print("6. Exit")
+    print("6. View Statistics")
+    print("7. Exit")
 
     choice = input("Choose an option: ")
 
@@ -105,9 +164,9 @@ while True:
 
         # Fake network packet
         packet = {
-            "ip": input("Enter IP Address: "),
-            "port": int(input("Enter Port: ")),
-            "protocol": input("Enter Protocol: ").upper()
+            "ip": get_valid_ip(),
+            "port": get_valid_port(),
+            "protocol": get_valid_protocol()
         }
 
         # Check all firewall rules
@@ -196,12 +255,12 @@ while True:
 
     elif choice == "3":
         print("\n===== ADD FIREWALL RULE =====")
-        priority = int(input("Enter Priority (1 = highest): "))
+        priority = get_valid_priority()
 
         ip = input("Enter IP Address (leave blank for ANY): ").strip()
         port = input("Enter Port (leave blank for ANY): ").strip()
         protocol = input("Enter Protocol (leave blank for ANY): ").strip().upper()
-        action = input("Enter Action (ALLOW/BLOCK): ").strip().upper()
+        action = get_valid_action()
 
         # Convert blank inputs to None (ANY)
         if ip == "":
@@ -285,6 +344,39 @@ while True:
 
 
     elif choice == "6":
+
+        print("\n===== FIREWALL STATISTICS =====")
+
+        cursor.execute("""
+        SELECT COUNT(*) FROM packet_logs
+        """)
+        total_packets = cursor.fetchone()[0]
+
+        cursor.execute("""
+        SELECT COUNT(*) FROM packet_logs
+        WHERE decision = 'ALLOW'
+        """)
+        allowed_packets = cursor.fetchone()[0]
+
+        cursor.execute("""
+        SELECT COUNT(*) FROM packet_logs
+        WHERE decision = 'BLOCK'
+        """)
+        blocked_packets = cursor.fetchone()[0]
+
+        if total_packets == 0:
+            print("No packet data available.")
+        else:
+            allow_rate = (allowed_packets / total_packets) * 100
+            block_rate = (blocked_packets / total_packets) * 100
+
+            print(f"Total Packets : {total_packets}")
+            print(f"Allowed       : {allowed_packets}")
+            print(f"Blocked       : {blocked_packets}")
+            print(f"Allow Rate    : {allow_rate:.1f}%")
+            print(f"Block Rate    : {block_rate:.1f}%")
+
+    elif choice == "7":
         conn.close()
         print("Exiting firewall simulator...")
         break
