@@ -156,7 +156,8 @@ while True:
     print("4. Delete Firewall Rule")
     print("5. View Packet Logs")
     print("6. View Statistics")
-    print("7. Exit")
+    print("7. Clear Packet Logs")
+    print("8. Exit")
 
     choice = input("Choose an option: ")
 
@@ -232,7 +233,7 @@ while True:
     elif choice == "2":
         print("\n===== FIREWALL RULES =====")
 
-        cursor.execute("SELECT * FROM firewall_rules")
+        cursor.execute("SELECT * FROM firewall_rules ORDER BY priority ASC")
         rules = cursor.fetchall()
 
         if not rules:
@@ -262,29 +263,42 @@ while True:
         protocol = input("Enter Protocol (leave blank for ANY): ").strip().upper()
         action = get_valid_action()
 
-        # Convert blank inputs to None (ANY)
         if ip == "":
             ip = None
+        else:
+            try:
+                ipaddress.ip_address(ip)
+            except ValueError:
+                print("Invalid IP address.")
+                continue
 
         if port == "":
             port = None
         else:
-            port = int(port)
+            try:
+                port = int(port)
+
+                if not 1 <= port <= 65535:
+                    print("Invalid port. Enter a number between 1 and 65535.")
+                    continue
+
+            except ValueError:
+                print("Invalid port. Please enter a number.")
+                continue
 
         if protocol == "":
             protocol = None
+        elif protocol not in ["TCP", "UDP", "ICMP"]:
+            print("Invalid protocol. Use TCP, UDP, or ICMP.")
+            continue
 
-        # Validate the action
-        if action not in ["ALLOW", "BLOCK"]:
-            print("Invalid action. Please enter ALLOW or BLOCK.")
-        else:
-            cursor.execute("""
-            INSERT INTO firewall_rules
-            (priority, ip_address, port, protocol, action)
-            VALUES (?, ?, ?, ?, ?)
-            """, (priority, ip, port, protocol, action))
+        cursor.execute("""
+        INSERT INTO firewall_rules
+        (priority, ip_address, port, protocol, action)
+        VALUES (?, ?, ?, ?, ?)
+        """, (priority, ip, port, protocol, action))
 
-            conn.commit()
+        conn.commit()
 
         print("✅ Firewall rule added successfully!")
 
@@ -376,7 +390,20 @@ while True:
             print(f"Allow Rate    : {allow_rate:.1f}%")
             print(f"Block Rate    : {block_rate:.1f}%")
 
+
     elif choice == "7":
+        print("\n===== CLEAR PACKET LOGS =====")
+        confirm = input("Are you sure you want to clear all packet logs? (Y/N): ").strip().upper()
+
+        if confirm == "Y":
+            cursor.execute("DELETE FROM packet_logs")
+            conn.commit()
+            print("✅ Packet logs cleared.")
+        else:
+            print("Packet logs were not cleared.")
+
+
+    elif choice == "8":
         conn.close()
         print("Exiting firewall simulator...")
         break
