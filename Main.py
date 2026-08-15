@@ -93,18 +93,16 @@ INSERT INTO firewall_rules (priority, ip_address, port, protocol, action)
 SELECT ?, ?, ?, ?, ?
 WHERE NOT EXISTS (
     SELECT 1 FROM firewall_rules
-    WHERE ip_address = ? AND port = ? AND protocol = ? AND action = ?
+    WHERE ip_address = ? AND port IS NULL AND protocol IS NULL AND action = ?
 )
 """, (
     1,
     "192.168.1.10",
-    80,
-    "TCP",
+    None,
+    None,
     "BLOCK",
 
     "192.168.1.10",
-    80,
-    "TCP",
     "BLOCK"
 ))
 
@@ -179,7 +177,7 @@ while True:
         rules = cursor.fetchall()
 
         decision = "ALLOW"
-        matched_rule = None
+        matched_rules = []
 
         for rule in rules:
             rule_id, priority, ip, port, protocol, action = rule
@@ -189,9 +187,10 @@ while True:
             protocol_match = (protocol is None or protocol == packet["protocol"])
 
             if ip_match and port_match and protocol_match:
-                decision = action
-                matched_rule = rule
-                break
+                matched_rules.append(rule)
+
+                if action == "BLOCK":
+                    decision = "BLOCK"
 
         if decision == "BLOCK":
             cursor.execute("""
@@ -203,14 +202,26 @@ while True:
                 packet["port"],
                 packet["protocol"],
                 "BLOCK",
-                matched_rule[0]
+                matched_rules[0][0]
             ))
 
             conn.commit()
 
             print("❌ BLOCKED")
-            print(f"Matched Rule #{matched_rule[0]}")
-            print(f"Action: {matched_rule[5]}")
+            print("Reasons:")
+
+            for rule in matched_rules:
+                reason = []
+
+                if rule[2] is not None:
+                    reason.append(f"IP {rule[2]}")
+                if rule[3] is not None:
+                    reason.append(f"Port {rule[3]}")
+                if rule[4] is not None:
+                    reason.append(f"Protocol {rule[4]}")
+
+                print(f"- Rule #{rule[0]}: {', '.join(reason)} is blocked")
+
         else:
             cursor.execute("""
             INSERT INTO packet_logs
